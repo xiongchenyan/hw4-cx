@@ -38,12 +38,13 @@ public class DocumentVectorAnnotator extends JCasAnnotator_ImplBase {
 
 	}
 	/**
-	 * 
-	 * @param jcas
-	 * @param doc
+	 *what I do:
+	 *	tokenize the sentence using StanforCoreNLP tokenizer.
+	 *	for each sentence, add the tokenizes to a HashMap, as the vector space model for it.
+	 * @param jcas: the jcas in annotation system
+	 * @param doc: the type system Document to process
 	 */
 
-	//first tokenize the document, and then update the doc->TokenList
 	private void createTermFreqVector(JCas jcas, Document doc) {
 
 		String docText = doc.getText();

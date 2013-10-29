@@ -22,18 +22,38 @@ import edu.cmu.lti.f13.hw4.hw4_cx.typesystems.Document;
 import edu.cmu.lti.f13.hw4.hw4_cx.typesystems.Token;
 import edu.cmu.lti.f13.hw4.hw4_cx.utils.Utils;
 
-
+/**
+ * the class used to evaluate the performance of a score method.
+ * working flow:
+ * 	input a set of documents, each line is either a query, or a document, with query id and rel score
+ * 	I will:
+ * 		store the qid and rel score of it
+ * 		make the vector space model of it
+ * 		calculate the cosine score of the sentence if it is an answer, if it is a query, will update the current query vector model
+ * 	after finishing all scores:
+ * 		for each query, get all its answers' scores
+ * 		sort scores, and mapping qid+score to rank
+ * 		assign rank to answers
+ * 		evaluate the MRR.
+ * @author cx
+ *
+ */
 public class RetrievalEvaluator extends CasConsumer_ImplBase {
 
 	/** query id number **/
 	public ArrayList<Integer> qIdList;
 	/** query and text relevant values **/
 	public ArrayList<Integer> relList;
+	/**scores of sentences, query score is set 0	 **/
 	public ArrayList<Double> scoreList;
+	/**the vector models of query and sentences **/
 	public ArrayList<Map<String,Integer>> hVectorList;
+	/**the raw string of sentences **/
 	public ArrayList<String> vRawString;
+	/**the rank sore of sentences  **/
 	public ArrayList<Integer> vRank;
-	public Map<Double,Integer> hScoreRank;
+	/**the intermediate Map to store the mapping from qid+score -> rank **/
+	private Map<Double,Integer> hScoreRank;
 		
 	public void initialize() throws ResourceInitializationException {
 
@@ -47,8 +67,7 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 	}
 
 	/**
-	 * TODO :: 1. construct the global word dictionary 2. keep the word
-	 * frequency for each sentence
+	 * pre compute: fill qIdList, relList, hVectorList, vRawString
 	 */
 	@Override
 	public void processCas(CAS aCas) throws ResourceProcessException {
@@ -77,7 +96,11 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 		}
 
 	}
-	
+	/**
+	 * 
+	 * @param vToken the tokens of a document
+	 * @return the HashMap of vToken
+	 */
 	private Map<String,Integer> MakeMapFromList(List<Token> vToken)
 	{
 		Map<String,Integer> hVector = new HashMap<String,Integer>();
@@ -88,8 +111,10 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 		return hVector;
 	}
 	/**
-	 * TODO 1. Compute Cosine Similarity and rank the retrieved sentences 2.
-	 * Compute the MRR metric
+	 * 1, assign cosine score to documents
+	 * 2, assign rank score to documents
+	 * 3, evaluate mrr
+	 * 4, output to stdout
 	 */
 	@Override
 	public void collectionProcessComplete(ProcessTrace arg0)
@@ -124,7 +149,9 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 
 	/**
 	 * 
-	 * @return cosine_similarity
+	 * @param queryVector: the vector space model of query
+	 * @param docVector: that of answer.
+	 * @return cosine_similarity of two vector
 	 */
 	private double computeCosineSimilarity(Map<String, Integer> queryVector,
 			Map<String, Integer> docVector) {
@@ -141,6 +168,11 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 		return cosine_similarity;
 	}
 	
+	/**
+	 * 
+	 * @param hVector: a vector
+	 * @return the norm of it (L2 norm)
+	 */
 	private double NormOfVector(Map<String,Integer> hVector)
 	{
 		double Norm = 0;
@@ -152,6 +184,12 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 		Norm = Math.sqrt(Norm);
 		return Norm;		
 	}
+	/**
+	 * 
+	 * @param hA: vector A
+	 * @param hB: vector B
+	 * @return the inner product of vector A,B
+	 */
 	private double InnerProduct(Map<String,Integer> hA, Map<String,Integer> hB)
 	{
 		double res = 0;
@@ -169,13 +207,13 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 	
 	
 	/**
-	 * 
+	 * calculate MRR based relList and vRank
 	 * @return mrr
 	 */
 	private double compute_mrr() {
 		double metric_mrr=0.0;
 
-		// TODO :: compute Mean Reciprocal Rank (MRR) of the text collection
+		//compute Mean Reciprocal Rank (MRR) of the text collection
 		//only need the relList and vRank
 		int cnt = 0;
 		for (int i = 0; i < relList.size(); i ++)
@@ -190,7 +228,7 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 		return metric_mrr;
 	}
 	/**
-	 * calc the cosine score of each document.
+	 * calculate the cosine score of each document.
 	 * document is in  hVectorList, if relList.get(i) is 99, then it is the current query.
 	 * assume the query appears first
 	 * @return
@@ -212,7 +250,7 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 		return true;
 	}
 	/**
-	 * calc the rank of each doc, based on their score, and qIdList.
+	 * calculate the rank of each doc, based on their score, and qIdList.
 	 * how to:
 	 * 	make a qid-score to rank hashmap
 	 * 		for each qid, get all its score, sort them, and then add to qid
